@@ -259,10 +259,13 @@ class Add(FunctionNode):
     @staticmethod
     def forward(inputs):
         "*** YOUR CODE HERE ***"
+        return inputs[0]+inputs[1]
+
 
     @staticmethod
     def backward(inputs, gradient):
         "*** YOUR CODE HERE ***"
+        return [gradient, gradient]
 
 class MatrixMultiply(FunctionNode):
     """
@@ -277,10 +280,12 @@ class MatrixMultiply(FunctionNode):
     @staticmethod
     def forward(inputs):
         "*** YOUR CODE HERE ***"
+        return np.dot(inputs[0], inputs[1])
 
     @staticmethod
     def backward(inputs, gradient):
         "*** YOUR CODE HERE ***"
+        return [np.dot(gradient, inputs[1].T), np.dot(inputs[0].T, gradient)]
 
 class MatrixVectorAdd(FunctionNode):
     """
@@ -313,10 +318,12 @@ class ReLU(FunctionNode):
     @staticmethod
     def forward(inputs):
         "*** YOUR CODE HERE ***"
+        return np.vectorize(max)(inputs[0], 0.0)
 
     @staticmethod
     def backward(inputs, gradient):
         "*** YOUR CODE HERE ***"
+        return [np.vectorize(lambda g,i: g if i >= 0 else 0)(gradient, inputs[0])]
 
 class SquareLoss(FunctionNode):
     """
