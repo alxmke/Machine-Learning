@@ -300,10 +300,12 @@ class MatrixVectorAdd(FunctionNode):
     @staticmethod
     def forward(inputs):
         "*** YOUR CODE HERE ***"
+        return inputs[0]+inputs[1]
 
     @staticmethod
     def backward(inputs, gradient):
         "*** YOUR CODE HERE ***"
+        return [gradient, np.dot(np.ones(inputs[0].shape[0]), gradient)]
 
 class ReLU(FunctionNode):
     """
@@ -340,10 +342,20 @@ class SquareLoss(FunctionNode):
     @staticmethod
     def forward(inputs):
         "*** YOUR CODE HERE ***"
+        A = inputs[0]
+        B = inputs[1]
+        dimensions = A.shape
+        n = dimensions[0]*dimensions[1]
+        return np.sum(np.vectorize(lambda a,b: 0.5*(a-b)**2)(inputs[0], inputs[1]))/n
 
     @staticmethod
     def backward(inputs, gradient):
         "*** YOUR CODE HERE ***"
+        A = inputs[0]
+        B = inputs[1]
+        dimensions = A.shape
+        n = dimensions[0]*dimensions[1]
+        return [gradient*(A-B)/n, -gradient*(A-B)/n]
 
 class SoftmaxLoss(FunctionNode):
     """
