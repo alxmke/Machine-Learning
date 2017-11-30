@@ -63,7 +63,6 @@ class Graph(object):
 
     For an example of how the Graph can be used, see the function `main` above.
     """
-
     def __init__(self, variables):
         """
         Initializes a new computation graph.
@@ -75,6 +74,12 @@ class Graph(object):
         so don't forget to call `self.add` on each of the variables.
         """
         "*** YOUR CODE HERE ***"
+        self.variables = variables
+        self.nodes = []
+        self.outputs = dict()
+        self.gradients = dict()
+        for v in variables:
+            self.add(v)
 
     def get_nodes(self):
         """
@@ -85,6 +90,7 @@ class Graph(object):
         Returns: a list of nodes
         """
         "*** YOUR CODE HERE ***"
+        return self.nodes
 
     def get_inputs(self, node):
         """
@@ -96,6 +102,7 @@ class Graph(object):
         Hint: every node has a `.get_parents()` method
         """
         "*** YOUR CODE HERE ***"
+        return [self.get_output(n) for n in node.get_parents()]
 
     def get_output(self, node):
         """
@@ -105,6 +112,7 @@ class Graph(object):
         Returns: a numpy array or a scalar
         """
         "*** YOUR CODE HERE ***"
+        return self.outputs[node]
 
     def get_gradient(self, node):
         """
@@ -120,6 +128,7 @@ class Graph(object):
         Returns: a numpy array
         """
         "*** YOUR CODE HERE ***"
+        return self.gradients[node]
 
     def add(self, node):
         """
@@ -134,6 +143,10 @@ class Graph(object):
         accumulator for the node, with correct shape.
         """
         "*** YOUR CODE HERE ***"
+        output = node.forward(self.get_inputs(node))
+        self.outputs[node] = output
+        self.gradients[node] = np.zeros_like(output) 
+        self.nodes += [node]
 
     def backprop(self):
         """
@@ -149,8 +162,14 @@ class Graph(object):
         """
         loss_node = self.get_nodes()[-1]
         assert np.asarray(self.get_output(loss_node)).ndim == 0
-
         "*** YOUR CODE HERE ***"
+        self.gradients[loss_node] = 1.0
+        nodes = self.get_nodes()[::-1]
+        for node in nodes:
+            parents = node.get_parents()
+            back_gradients = node.backward(self.get_inputs(node), self.get_gradient(node))
+            for i in range(len(parents)):
+                self.gradients[parents[i]] += back_gradients[i]
 
     def step(self, step_size):
         """
@@ -161,6 +180,8 @@ class Graph(object):
         Hint: each Variable has a `.data` attribute
         """
         "*** YOUR CODE HERE ***"
+        for v in self.variables:
+            v.data = v.data - step_size*self.get_gradient(v)
 
 class DataNode(object):
     """
@@ -255,12 +276,10 @@ class Add(FunctionNode):
         y must have the same shape as x
     Output: x + y
     """
-
     @staticmethod
     def forward(inputs):
         "*** YOUR CODE HERE ***"
         return inputs[0]+inputs[1]
-
 
     @staticmethod
     def backward(inputs, gradient):
@@ -276,7 +295,6 @@ class MatrixMultiply(FunctionNode):
         B represents a matrix of shape (m x k)
     Output: a matrix of shape (n x k)
     """
-
     @staticmethod
     def forward(inputs):
         "*** YOUR CODE HERE ***"
@@ -296,7 +314,6 @@ class MatrixVectorAdd(FunctionNode):
         x represents a vector (m)
     Output: a matrix of shape (n x m)
     """
-
     @staticmethod
     def forward(inputs):
         "*** YOUR CODE HERE ***"
@@ -316,7 +333,6 @@ class ReLU(FunctionNode):
         x represents either a vector or matrix
     Output: same shape as x, with no negative entries
     """
-
     @staticmethod
     def forward(inputs):
         "*** YOUR CODE HERE ***"
@@ -338,7 +354,6 @@ class SquareLoss(FunctionNode):
     in the inputs, which creates a (batch_size x dim) matrix. It then calculates
     and returns the mean of all elements in this matrix.
     """
-
     @staticmethod
     def forward(inputs):
         "*** YOUR CODE HERE ***"
@@ -356,6 +371,27 @@ class SquareLoss(FunctionNode):
         dimensions = A.shape
         n = dimensions[0]*dimensions[1]
         return [gradient*(A-B)/n, -gradient*(A-B)/n]
+
+# Queue implementation pulled from cs188 search/util.py
+class Queue:
+    "A container with a first-in-first-out (FIFO) queuing policy."
+    def __init__(self):
+        self.list = []
+
+    def push(self,item):
+        "Enqueue the 'item' into the queue"
+        self.list.insert(0,item)
+
+    def pop(self):
+        """
+          Dequeue the earliest enqueued item still in the queue. This
+          operation removes the item from the queue.
+        """
+        return self.list.pop()
+
+    def isEmpty(self):
+        "Returns true if the queue is empty"
+        return len(self.list) == 0
 
 class SoftmaxLoss(FunctionNode):
     """
