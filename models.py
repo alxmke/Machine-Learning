@@ -40,6 +40,9 @@ class RegressionModel(Model):
         # Remember to set self.learning_rate!
         # You may use any learning rate that works well for your architecture
         "*** YOUR CODE HERE ***"
+        self.learning_rate = 0.5
+        self.hidden_size = 200
+        self.var_nodes = None
 
     def run(self, x, y=None):
         """
@@ -61,17 +64,37 @@ class RegressionModel(Model):
         Note: DO NOT call backprop() or step() inside this method!
         """
         "*** YOUR CODE HERE ***"
-
+        if not self.var_nodes:
+            self.var_nodes = dict({"W1": nn.Variable(x.size, self.hidden_size),
+                                   "W2": nn.Variable(x.size, self.hidden_size),
+                                   "b1": nn.Variable(self.hidden_size),
+                                   "b2": nn.Variable(self.hidden_size)})
         if y is not None:
             # At training time, the correct output `y` is known.
             # Here, you should construct a loss node, and return the nn.Graph
             # that the node belongs to. The loss node must be the last node
             # added to the graph.
             "*** YOUR CODE HERE ***"
+            print(x)
+            print(y)
+            graph = nn.Graph([self.var_nodes["W1"],
+                              self.var_nodes["W2"],
+                              self.var_nodes["b1"],
+                              self.var_nodes["b2"]])
+            input_x = nn.Input(graph, x.T)
+            input_y = nn.Input(graph, y.T)
+            A = nn.MatrixMultiply(graph, input_x, self.var_nodes['W1'])
+            B = nn.MatrixVectorAdd(graph, A, self.var_nodes["b1"])
+            C = nn.ReLU(graph, B)
+            D = nn.MatrixMultiply(graph, C, self.var_nodes["W2"])
+            E = nn.MatrixVectorAdd(graph, D, self.var_nodes["b2"])
+            loss = nn.SquareLoss(graph, E, input_y)
+            return graph
         else:
             # At test time, the correct output is unknown.
             # You should instead return your model's prediction as a numpy array
             "*** YOUR CODE HERE ***"
+            return None
 
 class OddRegressionModel(Model):
     """
