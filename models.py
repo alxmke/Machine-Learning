@@ -3,6 +3,15 @@ import numpy as np
 import backend
 import nn
 
+def prediction(x, layer_vars):
+    assert len(layer_vars) > 0
+    relu = np.vectorize(max)
+    first_layer = layer_vars[0]
+    result = np.dot(x, first_layer[0])+first_layer[1]
+    for layer in layer_vars[1:]:
+        result = np.dot(relu(result, 0.0), layer[0]) + layer[1]
+    return result
+
 class Model(object):
     """Base model class for the different applications"""
     def __init__(self):
@@ -40,10 +49,15 @@ class RegressionModel(Model):
         # Remember to set self.learning_rate!
         # You may use any learning rate that works well for your architecture
         "*** YOUR CODE HERE ***"
-        self.learning_rate = 0.5
-        self.hidden_size = 200
-        self.var_nodes = None
-
+        # (0.093, [20, 21])
+        self.learning_rate = 0.093
+        self.hidden_size = [20, 21]
+        self.var_nodes = dict({"W1": nn.Variable(1, self.hidden_size[0]),
+                               "b1": nn.Variable(1, self.hidden_size[0]),
+                               "W2": nn.Variable(self.hidden_size[0], self.hidden_size[1]),
+                               "b2": nn.Variable(1, self.hidden_size[1]),
+                               "W3": nn.Variable(self.hidden_size[1], 1),
+                               "b3": nn.Variable(1,1)})
     def run(self, x, y=None):
         """
         Runs the model for a batch of examples.
@@ -64,37 +78,64 @@ class RegressionModel(Model):
         Note: DO NOT call backprop() or step() inside this method!
         """
         "*** YOUR CODE HERE ***"
-        if not self.var_nodes:
-            self.var_nodes = dict({"W1": nn.Variable(x.size, self.hidden_size),
-                                   "W2": nn.Variable(x.size, self.hidden_size),
-                                   "b1": nn.Variable(self.hidden_size),
-                                   "b2": nn.Variable(self.hidden_size)})
         if y is not None:
             # At training time, the correct output `y` is known.
             # Here, you should construct a loss node, and return the nn.Graph
             # that the node belongs to. The loss node must be the last node
             # added to the graph.
             "*** YOUR CODE HERE ***"
-            print(x)
-            print(y)
             graph = nn.Graph([self.var_nodes["W1"],
-                              self.var_nodes["W2"],
                               self.var_nodes["b1"],
-                              self.var_nodes["b2"]])
-            input_x = nn.Input(graph, x.T)
-            input_y = nn.Input(graph, y.T)
+                              self.var_nodes["W2"],
+                              self.var_nodes["b2"],
+                              self.var_nodes["W3"],
+                              self.var_nodes["b3"]])
+            input_x = nn.Input(graph, x)
+            input_y = nn.Input(graph, y)
+            input_neg = nn.Input(graph, -np.ones((1,1)))
+            
             A = nn.MatrixMultiply(graph, input_x, self.var_nodes['W1'])
             B = nn.MatrixVectorAdd(graph, A, self.var_nodes["b1"])
             C = nn.ReLU(graph, B)
             D = nn.MatrixMultiply(graph, C, self.var_nodes["W2"])
             E = nn.MatrixVectorAdd(graph, D, self.var_nodes["b2"])
-            loss = nn.SquareLoss(graph, E, input_y)
+            F = nn.ReLU(graph, E)
+            G = nn.MatrixMultiply(graph, F, self.var_nodes["W3"])
+            H = nn.MatrixVectorAdd(graph, G, self.var_nodes["b3"])
+            
+            nX = nn.MatrixMultiply(graph, input_x, input_neg)
+            I = nn.MatrixMultiply(graph, nX, self.var_nodes['W1'])
+            J = nn.MatrixVectorAdd(graph, I, self.var_nodes["b1"])
+            K = nn.ReLU(graph, J)
+            L = nn.MatrixMultiply(graph, K, self.var_nodes["W2"])
+            M = nn.MatrixVectorAdd(graph, L, self.var_nodes["b2"])
+            N = nn.ReLU(graph, M)
+            O = nn.MatrixMultiply(graph, N, self.var_nodes["W3"])
+            P = nn.MatrixVectorAdd(graph, O, self.var_nodes["b3"])
+            nP = nn.MatrixMultiply(graph, P, input_neg)
+
+            Q = nn.Add(graph, H, nP)
+            loss = nn.SquareLoss(graph, Q, input_y)
             return graph
         else:
             # At test time, the correct output is unknown.
             # You should instead return your model's prediction as a numpy array
             "*** YOUR CODE HERE ***"
-            return None
+            vns = self.var_nodes
+            W1 = vns["W1"].data
+            b1 = vns["b1"].data
+            W2 = vns["W2"].data
+            b2 = vns["b2"].data
+            W3 = vns["W3"].data
+            b3 = vns["b3"].data
+            relu = np.vectorize(max)
+            A1 = relu(np.dot(x, W1) + b1, 0.0)
+            A2 = relu(np.dot(A1,W2) + b2, 0.0)
+            A3 = np.dot(A2,W3) + b3
+            C1 = relu(np.dot(-x,W1) + b1, 0.0)
+            C2 = relu(np.dot(C1,W2) + b2, 0.0)
+            C3 = np.dot(C2,W3) + b3
+            return A3 - C3
 
 class OddRegressionModel(Model):
     """
@@ -112,7 +153,15 @@ class OddRegressionModel(Model):
         # Remember to set self.learning_rate!
         # You may use any learning rate that works well for your architecture
         "*** YOUR CODE HERE ***"
-
+        # (0.093, [20, 21])
+        self.learning_rate = 0.093
+        self.hidden_size = [20, 21]
+        self.var_nodes = dict({"W1": nn.Variable(1, self.hidden_size[0]),
+                               "b1": nn.Variable(1, self.hidden_size[0]),
+                               "W2": nn.Variable(self.hidden_size[0], self.hidden_size[1]),
+                               "b2": nn.Variable(1, self.hidden_size[1]),
+                               "W3": nn.Variable(self.hidden_size[1], 1),
+                               "b3": nn.Variable(1,1)})
     def run(self, x, y=None):
         """
         Runs the model for a batch of examples.
@@ -133,17 +182,64 @@ class OddRegressionModel(Model):
         Note: DO NOT call backprop() or step() inside this method!
         """
         "*** YOUR CODE HERE ***"
-
         if y is not None:
             # At training time, the correct output `y` is known.
             # Here, you should construct a loss node, and return the nn.Graph
             # that the node belongs to. The loss node must be the last node
             # added to the graph.
             "*** YOUR CODE HERE ***"
+            graph = nn.Graph([self.var_nodes["W1"],
+                              self.var_nodes["b1"],
+                              self.var_nodes["W2"],
+                              self.var_nodes["b2"],
+                              self.var_nodes["W3"],
+                              self.var_nodes["b3"]])
+            input_x = nn.Input(graph, x)
+            input_y = nn.Input(graph, y)
+            input_neg = nn.Input(graph, -np.ones((1,1)))
+            
+            A = nn.MatrixMultiply(graph, input_x, self.var_nodes['W1'])
+            B = nn.MatrixVectorAdd(graph, A, self.var_nodes["b1"])
+            C = nn.ReLU(graph, B)
+            D = nn.MatrixMultiply(graph, C, self.var_nodes["W2"])
+            E = nn.MatrixVectorAdd(graph, D, self.var_nodes["b2"])
+            F = nn.ReLU(graph, E)
+            G = nn.MatrixMultiply(graph, F, self.var_nodes["W3"])
+            H = nn.MatrixVectorAdd(graph, G, self.var_nodes["b3"])
+            
+            nX = nn.MatrixMultiply(graph, input_x, input_neg)
+            I = nn.MatrixMultiply(graph, nX, self.var_nodes['W1'])
+            J = nn.MatrixVectorAdd(graph, I, self.var_nodes["b1"])
+            K = nn.ReLU(graph, J)
+            L = nn.MatrixMultiply(graph, K, self.var_nodes["W2"])
+            M = nn.MatrixVectorAdd(graph, L, self.var_nodes["b2"])
+            N = nn.ReLU(graph, M)
+            O = nn.MatrixMultiply(graph, N, self.var_nodes["W3"])
+            P = nn.MatrixVectorAdd(graph, O, self.var_nodes["b3"])
+            nP = nn.MatrixMultiply(graph, P, input_neg)
+
+            Q = nn.Add(graph, H, nP)
+            loss = nn.SquareLoss(graph, Q, input_y)
+            return graph
         else:
             # At test time, the correct output is unknown.
             # You should instead return your model's prediction as a numpy array
             "*** YOUR CODE HERE ***"
+            vns = self.var_nodes
+            W1 = vns["W1"].data
+            b1 = vns["b1"].data
+            W2 = vns["W2"].data
+            b2 = vns["b2"].data
+            W3 = vns["W3"].data
+            b3 = vns["b3"].data
+            relu = np.vectorize(max)
+            A1 = relu(np.dot(x, W1) + b1, 0.0)
+            A2 = relu(np.dot(A1,W2) + b2, 0.0)
+            A3 = np.dot(A2,W3) + b3
+            C1 = relu(np.dot(-x,W1) + b1, 0.0)
+            C2 = relu(np.dot(C1,W2) + b2, 0.0)
+            C3 = np.dot(C2,W3) + b3
+            return A3 - C3
 
 class DigitClassificationModel(Model):
     """
@@ -166,6 +262,29 @@ class DigitClassificationModel(Model):
         # Remember to set self.learning_rate!
         # You may use any learning rate that works well for your architecture
         "*** YOUR CODE HERE ***"
+        # (0.230, 160) {96.90, 95.59}
+        # (0.230, 150) {97.10, 92.88, 92.83}
+        # (0.270, 125) {96.46, 96.97, 96.79}
+        # (0.250, 125) {96.71, 95.90}
+        # (0.230, 125) {93.80, 95.77}
+        # (0.240, 125) {96.45, 96.08}
+        # (0.020, 250) {90.45, }
+        # (0.040, 250) {94.35, }
+        # (0.080, 250) {95.20, }
+        # (0.160, 250) {96.13, 96.28}
+        # (0.180, 250) {96.74, 94.70}
+        # (0.220, 250) {95.56, 96.72}
+        # (0.240, 250) {97.07, 96.97, 96.77, 97.17, 97.01, 96.80}
+        # (0.250, 250) {96.39, 95.51}
+        # (0.230, 250) {97.22, 96.47, 92.13}
+        # (0.240, 175) {95.43}
+        # (0.239, 250) {96.83, 97.47, 97.20}
+        self.learning_rate = 0.239
+        self.hidden_size = [250]
+        self.var_nodes = dict({"W1": nn.Variable(784, self.hidden_size[0]),
+                               "b1": nn.Variable(1, self.hidden_size[0]),
+                               "W2": nn.Variable(self.hidden_size[0], 10),
+                               "b2": nn.Variable(1, 10)})
 
     def run(self, x, y=None):
         """
@@ -193,9 +312,28 @@ class DigitClassificationModel(Model):
 
         if y is not None:
             "*** YOUR CODE HERE ***"
+            graph = nn.Graph([self.var_nodes["W1"],
+                              self.var_nodes["b1"],
+                              self.var_nodes["W2"],
+                              self.var_nodes["b2"]])
+            input_x = nn.Input(graph, x)
+            input_y = nn.Input(graph, y)
+
+            A = nn.MatrixMultiply(graph, input_x, self.var_nodes['W1'])
+            B = nn.MatrixVectorAdd(graph, A, self.var_nodes["b1"])
+            C = nn.ReLU(graph, B)
+            D = nn.MatrixMultiply(graph, C, self.var_nodes["W2"])
+            E = nn.MatrixVectorAdd(graph, D, self.var_nodes["b2"])
+            F = nn.SoftmaxLoss(graph, E, input_y)
+            return graph
         else:
             "*** YOUR CODE HERE ***"
-
+            vns = self.var_nodes
+            W1 = vns["W1"].data
+            b1 = vns["b1"].data
+            W2 = vns["W2"].data
+            b2 = vns["b2"].data
+            return prediction(x, [(W1,b1),(W2,b2)])
 
 class DeepQModel(Model):
     """
