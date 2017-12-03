@@ -336,12 +336,12 @@ class ReLU(FunctionNode):
     @staticmethod
     def forward(inputs):
         "*** YOUR CODE HERE ***"
-        return np.vectorize(max)(inputs[0], 0.0)
+        return np.maximum(inputs[0], 0)
 
     @staticmethod
     def backward(inputs, gradient):
         "*** YOUR CODE HERE ***"
-        return [np.vectorize(lambda g,i: g if i >= 0 else 0)(gradient, inputs[0])]
+        return [np.where(inputs[0] >= 0, 1, 0) * gradient]
 
 class SquareLoss(FunctionNode):
     """
@@ -357,11 +357,7 @@ class SquareLoss(FunctionNode):
     @staticmethod
     def forward(inputs):
         "*** YOUR CODE HERE ***"
-        A = inputs[0]
-        B = inputs[1]
-        dimensions = A.shape
-        n = dimensions[0]*dimensions[1]
-        return np.sum(np.vectorize(lambda a,b: 0.5*(a-b)**2)(inputs[0], inputs[1]))/n
+        return np.mean(0.5*(inputs[0]-inputs[1])**2)
 
     @staticmethod
     def backward(inputs, gradient):

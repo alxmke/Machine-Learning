@@ -12,6 +12,17 @@ def prediction(x, layer_vars):
         result = np.dot(relu(result, 0.0), layer[0]) + layer[1]
     return result
 
+def build_n_layer_relu_graph(graph, input_x, layers):
+    assert len(layers) > 0
+    first_layer = layers[0]
+    A = nn.MatrixMultiply(graph, input_x, first_layer[0])
+    B = nn.MatrixVectorAdd(graph, A, first_layer[1])
+    for layer in layers[1:]:
+        C = nn.ReLU(graph, B)
+        A = nn.MatrixMultiply(graph, C, layer[0])
+        B = nn.MatrixVectorAdd(graph, A, layer[1])
+    return B
+
 class Model(object):
     """Base model class for the different applications"""
     def __init__(self):
@@ -78,64 +89,42 @@ class RegressionModel(Model):
         Note: DO NOT call backprop() or step() inside this method!
         """
         "*** YOUR CODE HERE ***"
+        vns = self.var_nodes
+        W1 = vns["W1"]
+        b1 = vns["b1"] 
+        W2 = vns["W2"]
+        b2 = vns["b2"] 
+        W3 = vns["W3"]
+        b3 = vns["b3"] 
         if y is not None:
             # At training time, the correct output `y` is known.
             # Here, you should construct a loss node, and return the nn.Graph
             # that the node belongs to. The loss node must be the last node
             # added to the graph.
             "*** YOUR CODE HERE ***"
-            graph = nn.Graph([self.var_nodes["W1"],
-                              self.var_nodes["b1"],
-                              self.var_nodes["W2"],
-                              self.var_nodes["b2"],
-                              self.var_nodes["W3"],
-                              self.var_nodes["b3"]])
+            layers = [(W1,b1),(W2,b2),(W3,b3)]
+            graph = nn.Graph([layers[0][0], layers[0][1],
+                              layers[1][0], layers[1][1],
+                              layers[2][0], layers[2][1]])
             input_x = nn.Input(graph, x)
             input_y = nn.Input(graph, y)
             input_neg = nn.Input(graph, -np.ones((1,1)))
             
-            A = nn.MatrixMultiply(graph, input_x, self.var_nodes['W1'])
-            B = nn.MatrixVectorAdd(graph, A, self.var_nodes["b1"])
-            C = nn.ReLU(graph, B)
-            D = nn.MatrixMultiply(graph, C, self.var_nodes["W2"])
-            E = nn.MatrixVectorAdd(graph, D, self.var_nodes["b2"])
-            F = nn.ReLU(graph, E)
-            G = nn.MatrixMultiply(graph, F, self.var_nodes["W3"])
-            H = nn.MatrixVectorAdd(graph, G, self.var_nodes["b3"])
+            A = build_n_layer_relu_graph(graph, input_x, layers)
             
             nX = nn.MatrixMultiply(graph, input_x, input_neg)
-            I = nn.MatrixMultiply(graph, nX, self.var_nodes['W1'])
-            J = nn.MatrixVectorAdd(graph, I, self.var_nodes["b1"])
-            K = nn.ReLU(graph, J)
-            L = nn.MatrixMultiply(graph, K, self.var_nodes["W2"])
-            M = nn.MatrixVectorAdd(graph, L, self.var_nodes["b2"])
-            N = nn.ReLU(graph, M)
-            O = nn.MatrixMultiply(graph, N, self.var_nodes["W3"])
-            P = nn.MatrixVectorAdd(graph, O, self.var_nodes["b3"])
-            nP = nn.MatrixMultiply(graph, P, input_neg)
+            B = build_n_layer_relu_graph(graph, nX, layers)
+            nB = nn.MatrixMultiply(graph, B, input_neg)
 
-            Q = nn.Add(graph, H, nP)
-            loss = nn.SquareLoss(graph, Q, input_y)
+            C = nn.Add(graph, A, nB)
+            nn.SquareLoss(graph, C, input_y)
             return graph
         else:
             # At test time, the correct output is unknown.
             # You should instead return your model's prediction as a numpy array
             "*** YOUR CODE HERE ***"
-            vns = self.var_nodes
-            W1 = vns["W1"].data
-            b1 = vns["b1"].data
-            W2 = vns["W2"].data
-            b2 = vns["b2"].data
-            W3 = vns["W3"].data
-            b3 = vns["b3"].data
-            relu = np.vectorize(max)
-            A1 = relu(np.dot(x, W1) + b1, 0.0)
-            A2 = relu(np.dot(A1,W2) + b2, 0.0)
-            A3 = np.dot(A2,W3) + b3
-            C1 = relu(np.dot(-x,W1) + b1, 0.0)
-            C2 = relu(np.dot(C1,W2) + b2, 0.0)
-            C3 = np.dot(C2,W3) + b3
-            return A3 - C3
+            vnds = [(W1.data,b1.data),(W2.data,b2.data),(W3.data,b3.data)]
+            return prediction(x, vnds)-prediction(-x, vnds)
 
 class OddRegressionModel(Model):
     """
@@ -182,64 +171,42 @@ class OddRegressionModel(Model):
         Note: DO NOT call backprop() or step() inside this method!
         """
         "*** YOUR CODE HERE ***"
+        vns = self.var_nodes
+        W1 = vns["W1"]
+        b1 = vns["b1"] 
+        W2 = vns["W2"]
+        b2 = vns["b2"] 
+        W3 = vns["W3"]
+        b3 = vns["b3"] 
         if y is not None:
             # At training time, the correct output `y` is known.
             # Here, you should construct a loss node, and return the nn.Graph
             # that the node belongs to. The loss node must be the last node
             # added to the graph.
             "*** YOUR CODE HERE ***"
-            graph = nn.Graph([self.var_nodes["W1"],
-                              self.var_nodes["b1"],
-                              self.var_nodes["W2"],
-                              self.var_nodes["b2"],
-                              self.var_nodes["W3"],
-                              self.var_nodes["b3"]])
+            layers = [(W1,b1),(W2,b2),(W3,b3)]
+            graph = nn.Graph([layers[0][0], layers[0][1],
+                              layers[1][0], layers[1][1],
+                              layers[2][0], layers[2][1]])
             input_x = nn.Input(graph, x)
             input_y = nn.Input(graph, y)
             input_neg = nn.Input(graph, -np.ones((1,1)))
             
-            A = nn.MatrixMultiply(graph, input_x, self.var_nodes['W1'])
-            B = nn.MatrixVectorAdd(graph, A, self.var_nodes["b1"])
-            C = nn.ReLU(graph, B)
-            D = nn.MatrixMultiply(graph, C, self.var_nodes["W2"])
-            E = nn.MatrixVectorAdd(graph, D, self.var_nodes["b2"])
-            F = nn.ReLU(graph, E)
-            G = nn.MatrixMultiply(graph, F, self.var_nodes["W3"])
-            H = nn.MatrixVectorAdd(graph, G, self.var_nodes["b3"])
+            A = build_n_layer_relu_graph(graph, input_x, layers)
             
             nX = nn.MatrixMultiply(graph, input_x, input_neg)
-            I = nn.MatrixMultiply(graph, nX, self.var_nodes['W1'])
-            J = nn.MatrixVectorAdd(graph, I, self.var_nodes["b1"])
-            K = nn.ReLU(graph, J)
-            L = nn.MatrixMultiply(graph, K, self.var_nodes["W2"])
-            M = nn.MatrixVectorAdd(graph, L, self.var_nodes["b2"])
-            N = nn.ReLU(graph, M)
-            O = nn.MatrixMultiply(graph, N, self.var_nodes["W3"])
-            P = nn.MatrixVectorAdd(graph, O, self.var_nodes["b3"])
-            nP = nn.MatrixMultiply(graph, P, input_neg)
+            B = build_n_layer_relu_graph(graph, nX, layers)
+            nB = nn.MatrixMultiply(graph, B, input_neg)
 
-            Q = nn.Add(graph, H, nP)
-            loss = nn.SquareLoss(graph, Q, input_y)
+            C = nn.Add(graph, A, nB)
+            nn.SquareLoss(graph, C, input_y)
             return graph
         else:
             # At test time, the correct output is unknown.
             # You should instead return your model's prediction as a numpy array
             "*** YOUR CODE HERE ***"
-            vns = self.var_nodes
-            W1 = vns["W1"].data
-            b1 = vns["b1"].data
-            W2 = vns["W2"].data
-            b2 = vns["b2"].data
-            W3 = vns["W3"].data
-            b3 = vns["b3"].data
-            relu = np.vectorize(max)
-            A1 = relu(np.dot(x, W1) + b1, 0.0)
-            A2 = relu(np.dot(A1,W2) + b2, 0.0)
-            A3 = np.dot(A2,W3) + b3
-            C1 = relu(np.dot(-x,W1) + b1, 0.0)
-            C2 = relu(np.dot(C1,W2) + b2, 0.0)
-            C3 = np.dot(C2,W3) + b3
-            return A3 - C3
+            vnds = [(W1.data,b1.data),(W2.data,b2.data),(W3.data,b3.data)]
+            return prediction(x, vnds)-prediction(-x, vnds)
 
 class DigitClassificationModel(Model):
     """
@@ -262,24 +229,7 @@ class DigitClassificationModel(Model):
         # Remember to set self.learning_rate!
         # You may use any learning rate that works well for your architecture
         "*** YOUR CODE HERE ***"
-        # (0.230, 160) {96.90, 95.59}
-        # (0.230, 150) {97.10, 92.88, 92.83}
-        # (0.270, 125) {96.46, 96.97, 96.79}
-        # (0.250, 125) {96.71, 95.90}
-        # (0.230, 125) {93.80, 95.77}
-        # (0.240, 125) {96.45, 96.08}
-        # (0.020, 250) {90.45, }
-        # (0.040, 250) {94.35, }
-        # (0.080, 250) {95.20, }
-        # (0.160, 250) {96.13, 96.28}
-        # (0.180, 250) {96.74, 94.70}
-        # (0.220, 250) {95.56, 96.72}
-        # (0.240, 250) {97.07, 96.97, 96.77, 97.17, 97.01, 96.80}
-        # (0.250, 250) {96.39, 95.51}
-        # (0.230, 250) {97.22, 96.47, 92.13}
-        # (0.240, 175) {95.43}
-        # (0.239, 250) {96.83, 97.47, 97.20}
-        self.learning_rate = 0.239
+        self.learning_rate = 0.5
         self.hidden_size = [250]
         self.var_nodes = dict({"W1": nn.Variable(784, self.hidden_size[0]),
                                "b1": nn.Variable(1, self.hidden_size[0]),
@@ -309,7 +259,6 @@ class DigitClassificationModel(Model):
             (if y is None) A (batch_size x 10) numpy array of scores (aka logits)
         """
         "*** YOUR CODE HERE ***"
-
         if y is not None:
             "*** YOUR CODE HERE ***"
             graph = nn.Graph([self.var_nodes["W1"],
@@ -324,7 +273,7 @@ class DigitClassificationModel(Model):
             C = nn.ReLU(graph, B)
             D = nn.MatrixMultiply(graph, C, self.var_nodes["W2"])
             E = nn.MatrixVectorAdd(graph, D, self.var_nodes["b2"])
-            F = nn.SoftmaxLoss(graph, E, input_y)
+            nn.SoftmaxLoss(graph, E, input_y)
             return graph
         else:
             "*** YOUR CODE HERE ***"
@@ -353,6 +302,14 @@ class DeepQModel(Model):
         # Remember to set self.learning_rate!
         # You may use any learning rate that works well for your architecture
         "*** YOUR CODE HERE ***"
+        self.learning_rate = 0.005
+        self.hidden_size = [20, 21]
+        self.var_nodes = dict({"W1": nn.Variable(self.state_size, self.hidden_size[0]),
+                               "b1": nn.Variable(1, self.hidden_size[0]),
+                               "W2": nn.Variable(self.hidden_size[0], self.hidden_size[1]),
+                               "b2": nn.Variable(1, self.hidden_size[1]),
+                               "W3": nn.Variable(self.hidden_size[1], self.num_actions),
+                               "b3": nn.Variable(1,self.num_actions)})
 
     def run(self, states, Q_target=None):
         """
@@ -380,11 +337,29 @@ class DeepQModel(Model):
                 scores, for the two actions
         """
         "*** YOUR CODE HERE ***"
-
+        vns = self.var_nodes
+        W1 = vns["W1"]
+        b1 = vns["b1"] 
+        W2 = vns["W2"]
+        b2 = vns["b2"] 
+        W3 = vns["W3"]
+        b3 = vns["b3"] 
         if Q_target is not None:
             "*** YOUR CODE HERE ***"
+            layers = [(W1,b1),(W2,b2),(W3,b3)]
+            graph = nn.Graph([layers[0][0], layers[0][1],
+                              layers[1][0], layers[1][1],
+                              layers[2][0], layers[2][1]])
+            in_state = nn.Input(graph, states)
+            in_target = nn.Input(graph, Q_target)
+            #input_neg = nn.Input(graph, -np.ones((1,1)))
+            
+            A = build_n_layer_relu_graph(graph, in_state, layers)
+            nn.SquareLoss(graph, A, in_target)
+            return graph
         else:
             "*** YOUR CODE HERE ***"
+            return prediction(states, [(W1.data,b1.data),(W2.data,b2.data),(W3.data,b3.data)])
 
     def get_action(self, state, eps):
         """
@@ -421,10 +396,18 @@ class LanguageIDModel(Model):
         # You can refer to self.num_chars or len(self.languages) in your code
         self.num_chars = 47
         self.languages = ["English", "Spanish", "Finnish", "Dutch", "Polish"]
-
         # Remember to set self.learning_rate!
         # You may use any learning rate that works well for your architecture
         "*** YOUR CODE HERE ***"
+        self.learning_rate = 0.007
+        self.hidden_size = [150]
+        self.var_nodes = dict({"W1": nn.Variable(self.num_chars, self.hidden_size[0]),
+                               "b1": nn.Variable(1, self.hidden_size[0]),
+                               "W2": nn.Variable(self.hidden_size[0], self.num_chars),
+                               "b2": nn.Variable(1, self.num_chars),
+                               "W0": nn.Variable(self.num_chars, len(self.languages)),
+                               "b0": nn.Variable(1, len(self.languages))})
+
 
     def run(self, xs, y=None):
         """
@@ -464,10 +447,26 @@ class LanguageIDModel(Model):
         Hint: you may use the batch_size variable in your code
         """
         batch_size = xs[0].shape[0]
-
         "*** YOUR CODE HERE ***"
+        vns = self.var_nodes
+        W0 = vns["W0"]
+        b0 = vns["b0"]
+        layers = [(vns["W1"],vns["b1"]),(vns["W2"],vns["b2"])]
+        graph = nn.Graph([layers[0][0], layers[0][1],
+                          layers[1][0], layers[1][1],
+                          W0, b0])
+        xns = [nn.Input(graph, x) for x in xs]
+        A = nn.Input(graph, np.zeros_like(xs[0]))
+        for xn in xns:
+            A = build_n_layer_relu_graph(graph, nn.Add(graph, A, xn), layers)
+        A = build_n_layer_relu_graph(graph, A, [(W0, b0)])
 
         if y is not None:
             "*** YOUR CODE HERE ***"
+            in_y = nn.Input(graph, y)
+            nn.SoftmaxLoss(graph, A, in_y)
+            return graph
         else:
             "*** YOUR CODE HERE ***"
+            return graph.get_output(A)
+
